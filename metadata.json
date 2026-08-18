@@ -1,6 +1,8 @@
 {
   "name": "Profit Calculator Pro",
   "description": "A professional business profit calculator for small business owners with real-time profit and loss metrics, Indian Rupee formatting, and history analytics.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": [
+    "microphone"
+  ],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

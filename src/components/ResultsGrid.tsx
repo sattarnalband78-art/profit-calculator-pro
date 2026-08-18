@@ -45,8 +45,8 @@ Calculated via Profit Calculator Pro (₹ INR)`;
           text: summaryText,
         });
         return;
-      } catch (err) {
-        // Fallback to clipboard if user cancelled or error
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
       }
     }
 
@@ -60,8 +60,11 @@ Calculated via Profit Calculator Pro (₹ INR)`;
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    if (typeof window !== 'undefined') {
+      window.print();
+    }
   };
 
   if (!result) {
@@ -125,29 +128,29 @@ Calculated via Profit Calculator Pro (₹ INR)`;
 
   return (
     <div className="space-y-4 printable-area">
-      {/* Action Bar (Share & Print) */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs no-print">
+      {/* Action Bar (Share, Print & Save Log) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs no-print">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-700 px-2 py-1 bg-slate-100 rounded-md">
+          <span className="text-xs font-bold text-slate-700 px-2.5 py-1 bg-slate-100 rounded-md truncate max-w-[180px] sm:max-w-xs">
             Product: {productName || 'Item'}
           </span>
         </div>
 
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Share Button */}
           <button
             type="button"
             onClick={handleShare}
-            className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 border border-slate-200 transition-colors cursor-pointer active:scale-95"
+            className="inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 border border-slate-200 transition-colors cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
             title="Share calculation summary"
           >
             {copied ? (
               <>
-                <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> Copied!
+                <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-600 shrink-0" /> Copied!
               </>
             ) : (
               <>
-                <Share2 className="w-3.5 h-3.5 mr-1.5 text-slate-600" /> Share Result
+                <Share2 className="w-3.5 h-3.5 mr-1.5 text-slate-600 shrink-0" /> Share Result
               </>
             )}
           </button>
@@ -156,10 +159,10 @@ Calculated via Profit Calculator Pro (₹ INR)`;
           <button
             type="button"
             onClick={handlePrint}
-            className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 border border-slate-200 transition-colors cursor-pointer active:scale-95"
+            className="inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 border border-slate-200 transition-colors cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
             title="Print or Save PDF"
           >
-            <Printer className="w-3.5 h-3.5 mr-1.5 text-slate-600" /> Print / PDF
+            <Printer className="w-3.5 h-3.5 mr-1.5 text-slate-600 shrink-0" /> Print / PDF
           </button>
 
           {/* Save to Log */}
@@ -167,7 +170,7 @@ Calculated via Profit Calculator Pro (₹ INR)`;
             type="button"
             onClick={onSaveResult}
             disabled={isSaved}
-            className={`inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
               isSaved
                 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                 : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs active:scale-95'
@@ -175,11 +178,11 @@ Calculated via Profit Calculator Pro (₹ INR)`;
           >
             {isSaved ? (
               <>
-                <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> Saved
+                <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-600 shrink-0" /> Saved
               </>
             ) : (
               <>
-                <BookmarkPlus className="w-3.5 h-3.5 mr-1.5" /> Save Log
+                <BookmarkPlus className="w-3.5 h-3.5 mr-1.5 shrink-0" /> Save Log
               </>
             )}
           </button>

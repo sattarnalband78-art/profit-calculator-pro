@@ -5,6 +5,7 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
+    base: '/profit-calculator-pro/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

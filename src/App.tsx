@@ -68,37 +68,47 @@ export default function App() {
     return newErrors;
   };
 
+  const [lastValidResult, setLastValidResult] = useState<CalculationResult | null>(null);
+
   // Automatic Calculation Result Computation
-  const currentResult = useMemo<CalculationResult | null>(() => {
+  useEffect(() => {
     const costNum = Number(input.costPrice);
     const sellingNum = Number(input.sellingPrice);
     const qtyNum = Number(input.quantity);
 
-    if (
-      input.costPrice === '' ||
-      input.sellingPrice === '' ||
-      input.quantity === '' ||
-      isNaN(costNum) ||
-      isNaN(sellingNum) ||
-      isNaN(qtyNum) ||
-      costNum < 0 ||
-      sellingNum < 0 ||
-      qtyNum <= 0
-    ) {
-      return null;
+    const allEmpty =
+      input.productName === '' &&
+      input.costPrice === '' &&
+      input.sellingPrice === '' &&
+      input.quantity === '';
+
+    if (allEmpty) {
+      setLastValidResult(null);
+      return;
     }
 
-    const metrics = calculateProfitMetrics(costNum, sellingNum, qtyNum);
-
-    return {
-      id: `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      timestamp: new Date(),
-      productName: input.productName || 'Unnamed Product',
-      costPrice: costNum,
-      sellingPrice: sellingNum,
-      quantity: qtyNum,
-      ...metrics,
-    };
+    if (
+      input.costPrice !== '' &&
+      input.sellingPrice !== '' &&
+      input.quantity !== '' &&
+      !isNaN(costNum) &&
+      !isNaN(sellingNum) &&
+      !isNaN(qtyNum) &&
+      costNum >= 0 &&
+      sellingNum >= 0 &&
+      qtyNum > 0
+    ) {
+      const metrics = calculateProfitMetrics(costNum, sellingNum, qtyNum);
+      setLastValidResult({
+        id: `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        timestamp: new Date(),
+        productName: input.productName || 'Unnamed Product',
+        costPrice: costNum,
+        sellingPrice: sellingNum,
+        quantity: qtyNum,
+        ...metrics,
+      });
+    }
   }, [input]);
 
   // Handle Input Changes
@@ -119,7 +129,7 @@ export default function App() {
     const validationErrors = validate(input);
     setErrors(validationErrors);
 
-    if (Object.keys(validationErrors).length === 0 && currentResult) {
+    if (Object.keys(validationErrors).length === 0 && lastValidResult) {
       // Scroll smoothly to results card on mobile screens
       const resultsElement = document.getElementById('results-section');
       if (resultsElement) {
@@ -137,6 +147,7 @@ export default function App() {
       quantity: '',
     });
     setErrors({});
+    setLastValidResult(null);
   };
 
   // Select Preset
@@ -163,31 +174,31 @@ export default function App() {
 
   // Save current result to history
   const handleSaveResult = () => {
-    if (!currentResult) return;
+    if (!lastValidResult) return;
     // Check if already in history by same parameters
     const exists = history.some(
       (h) =>
-        h.productName === currentResult.productName &&
-        h.costPrice === currentResult.costPrice &&
-        h.sellingPrice === currentResult.sellingPrice &&
-        h.quantity === currentResult.quantity
+        h.productName === lastValidResult.productName &&
+        h.costPrice === lastValidResult.costPrice &&
+        h.sellingPrice === lastValidResult.sellingPrice &&
+        h.quantity === lastValidResult.quantity
     );
 
     if (!exists) {
-      setHistory([currentResult, ...history]);
+      setHistory([lastValidResult, ...history]);
     }
   };
 
   const isCurrentResultSaved = useMemo(() => {
-    if (!currentResult) return false;
+    if (!lastValidResult) return false;
     return history.some(
       (h) =>
-        h.productName === currentResult.productName &&
-        h.costPrice === currentResult.costPrice &&
-        h.sellingPrice === currentResult.sellingPrice &&
-        h.quantity === currentResult.quantity
+        h.productName === lastValidResult.productName &&
+        h.costPrice === lastValidResult.costPrice &&
+        h.sellingPrice === lastValidResult.sellingPrice &&
+        h.quantity === lastValidResult.quantity
     );
-  }, [currentResult, history]);
+  }, [lastValidResult, history]);
 
   // Load item from history back into form
   const handleLoadFromHistory = (item: CalculationResult) => {
@@ -227,7 +238,7 @@ export default function App() {
         {/* Main 2-Column Responsive Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Column: Input Form (5 cols on desktop) */}
-          <div className="lg:col-span-5 space-y-6">
+          <div className="lg:col-span-5 space-y-6 no-print">
             <InputForm
               input={input}
               errors={errors}
@@ -244,23 +255,25 @@ export default function App() {
           {/* Right Column: Calculation Results (7 cols on desktop) */}
           <div id="results-section" className="lg:col-span-7 space-y-6">
             <ResultsGrid
-              result={currentResult}
+              result={lastValidResult}
               onSaveResult={handleSaveResult}
               isSaved={isCurrentResultSaved}
             />
 
             {/* Saved History List */}
-            <HistoryList
-              history={history}
-              onLoadResult={handleLoadFromHistory}
-              onDeleteResult={handleDeleteHistoryItem}
-              onClearHistory={handleClearHistory}
-            />
+            <div className="no-print">
+              <HistoryList
+                history={history}
+                onLoadResult={handleLoadFromHistory}
+                onDeleteResult={handleDeleteHistoryItem}
+                onClearHistory={handleClearHistory}
+              />
+            </div>
           </div>
         </div>
 
         {/* Feature Cards / Info Footer */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-200/80">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-200/80 no-print">
           <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs flex items-start gap-3">
             <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600 shrink-0">
               <Calculator className="w-4 h-4" />
@@ -300,7 +313,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-slate-100 border-t border-slate-200 px-4 sm:px-8 py-3.5 mt-8">
+      <footer className="bg-slate-100 border-t border-slate-200 px-4 sm:px-8 py-3.5 mt-8 no-print">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-500 uppercase tracking-widest font-bold">
           <span>Profit Calculator Pro • Financial Analytics Engine</span>
           <span>Designed for Small Businesses & Retail (₹ INR)</span>
