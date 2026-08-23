@@ -1,0 +1,17 @@
+{
+  "name": "Profit Calculator Pro",
+  "short_name": "Profit Pro",
+  "description": "Calculate your business profit in seconds",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#061326",
+  "theme_color": "#061326",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
