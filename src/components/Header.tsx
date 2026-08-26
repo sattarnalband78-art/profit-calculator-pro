@@ -23,8 +23,13 @@ export const Header: React.FC<HeaderProps> = ({ onLoadSample, onResetAll }) => {
       <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
         {/* Brand Logo & Title */}
         <div className="flex items-center gap-3">
-          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-2.5 rounded-2xl text-white shadow-lg shadow-slate-950/40 border border-blue-400/30 flex items-center justify-center shrink-0">
-            <Calculator className="w-6 h-6" />
+          <div className="relative p-0.5 rounded-2xl bg-gradient-to-br from-blue-500 via-amber-400 to-indigo-600 shadow-lg shadow-slate-950/50 flex items-center justify-center shrink-0">
+            <img
+              src="/noman-logo.svg"
+              alt="NOMAN Logo"
+              className="w-10 h-10 rounded-[14px] object-cover bg-slate-950 shadow-inner"
+              referrerPolicy="no-referrer"
+            />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">

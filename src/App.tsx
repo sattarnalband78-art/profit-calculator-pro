@@ -430,12 +430,11 @@ function CalculatorApp() {
       </main>
 
       {/* App Footer */}
-      <footer className="bg-white border-t border-slate-200 px-4 sm:px-8 py-5 mt-8 no-print">
+      <footer className="bg-white border-t border-slate-200/90 px-4 sm:px-8 py-5 mt-8 no-print">
         <div className="max-w-5xl mx-auto flex flex-col items-center justify-center gap-1 text-center">
-          <div className="flex items-center justify-center gap-1.5">
-            <span className="text-[11px] text-slate-500 font-normal">Powered by</span>
-            <span className="text-xs font-bold tracking-wider text-slate-900 uppercase">NOMAN</span>
-          </div>
+          <p className="text-xs font-semibold text-slate-800 tracking-wide">
+            Powered by NOMAN
+          </p>
           <p className="text-[11px] text-slate-400 font-normal">{t.footerDesigned}</p>
         </div>
       </footer>

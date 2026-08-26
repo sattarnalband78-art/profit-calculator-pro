@@ -1,7 +1,7 @@
 {
-  "name": "Profit Calculator Pro",
-  "short_name": "Profit Pro",
-  "description": "Calculate your business profit in seconds",
+  "name": "NOMAN Profit Calculator Pro",
+  "short_name": "NOMAN Pro",
+  "description": "Calculate your business profit in seconds - NOMAN Profit Calculator Pro",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#061326",

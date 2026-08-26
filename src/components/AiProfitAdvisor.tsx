@@ -31,6 +31,12 @@ export const AiProfitAdvisor: React.FC<AiProfitAdvisorProps> = ({ result }) => {
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [isAiUnavailable, setIsAiUnavailable] = useState(false);
 
+  // Clear previous AI response if language changes so stale language response is not shown
+  React.useEffect(() => {
+    setAiResponse(null);
+    setIsAiUnavailable(false);
+  }, [language, result?.productName, result?.costPrice, result?.sellingPrice, result?.quantity]);
+
   if (!result) return null;
 
   const {

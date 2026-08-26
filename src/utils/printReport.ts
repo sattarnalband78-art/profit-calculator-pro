@@ -827,10 +827,7 @@ export function generatePrintableHTML({ result, language }: GenerateReportOption
     </div>
 
     <div class="footer">
-      <span class="powered-by-brand">
-        <span class="powered-by-prefix">Powered by</span>
-        <span class="powered-by-name">NOMAN</span>
-      </span>
+      <span class="powered-by-name">Powered by NOMAN</span>
       <span>Page 1 of 1</span>
     </div>
   </div>

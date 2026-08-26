@@ -52,7 +52,7 @@
   
   <!-- Central Geometric NOMAN 'N' Emblem -->
   <g filter="url(#logoShadow)">
-    <!-- Left Pillar of 'N' -->
+    <!-- Left Pillar of 'N' with Rupee accent -->
     <path d="M 120 370 L 120 142 C 120 130 130 120 142 120 L 168 120 C 180 120 190 130 190 142 L 190 370 C 190 382 180 392 168 392 L 142 392 C 130 392 120 382 120 370 Z" 
           fill="url(#royalBlueGrad)" />
 

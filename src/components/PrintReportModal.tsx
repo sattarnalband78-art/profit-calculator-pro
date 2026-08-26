@@ -367,9 +367,8 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                 <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
                 Verified Calculation
               </span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] text-slate-500 font-normal">Powered by</span>
-                <span className="text-[11px] font-bold tracking-wider text-slate-900 uppercase">NOMAN</span>
+              <div className="text-[11px] font-semibold text-slate-800 tracking-wide">
+                Powered by NOMAN
               </div>
             </div>
           </div>
