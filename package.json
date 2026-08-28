@@ -10,8 +10,9 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
+    "generate:icons": "node scripts/generate-android-icons.js",
     "cap:sync": "cap sync",
-    "cap:build": "vite build && cap sync android",
+    "cap:build": "node scripts/generate-android-icons.js && vite build && cap sync android",
     "cap:open": "cap open android"
   },
   "dependencies": {
@@ -33,6 +34,7 @@
     "pngjs": "^7.0.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "sharp": "^0.35.4",
     "vite": "^6.2.3"
   },
   "devDependencies": {
