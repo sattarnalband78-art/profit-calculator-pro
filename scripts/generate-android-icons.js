@@ -134,6 +134,20 @@ export async function generateAndroidIcons() {
     }
   }
 
+  // Ensure capacitor-cordova-android-plugins AndroidManifest has package attribute
+  const cordovaManifestPath = path.resolve('android/capacitor-cordova-android-plugins/src/main/AndroidManifest.xml');
+  if (fs.existsSync(cordovaManifestPath)) {
+    let manifestContent = fs.readFileSync(cordovaManifestPath, 'utf8');
+    if (!manifestContent.includes('package=')) {
+      manifestContent = manifestContent.replace(
+        /<manifest\b/,
+        '<manifest package="capacitor.cordova.android.plugins"'
+      );
+      fs.writeFileSync(cordovaManifestPath, manifestContent, 'utf8');
+      console.log('✓ Ensured package attribute in capacitor-cordova-android-plugins AndroidManifest.xml');
+    }
+  }
+
   console.log('All Android launcher PNG icons successfully generated and saved to source repository.');
 }
 
