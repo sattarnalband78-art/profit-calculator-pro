@@ -12,7 +12,7 @@
     "lint": "tsc --noEmit",
     "generate:icons": "node scripts/generate-android-icons.js",
     "cap:sync": "cap sync",
-    "cap:build": "node scripts/generate-android-icons.js && vite build && cap sync android",
+    "cap:build": "node scripts/generate-android-icons.js && vite build && cap sync android && node scripts/generate-android-icons.js",
     "cap:open": "cap open android"
   },
   "dependencies": {

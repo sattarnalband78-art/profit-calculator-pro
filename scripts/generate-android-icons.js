@@ -120,6 +120,20 @@ export async function generateAndroidIcons() {
     console.log(`✓ mipmap-${d.name}: ic_launcher (${d.size}x${d.size}), round (${d.size}x${d.size}), foreground (${d.fgSize}x${d.fgSize})`);
   }
 
+  // Ensure capacitor.settings.gradle resolves :capacitor-android to local vendor module
+  const capSettingsPath = path.resolve('android/capacitor.settings.gradle');
+  if (fs.existsSync(capSettingsPath)) {
+    let content = fs.readFileSync(capSettingsPath, 'utf8');
+    if (content.includes("project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')")) {
+      content = content.replace(
+        "project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')",
+        "project(':capacitor-android').projectDir = new File('./capacitor-android')"
+      );
+      fs.writeFileSync(capSettingsPath, content, 'utf8');
+      console.log('✓ Updated capacitor.settings.gradle to use local ./capacitor-android module');
+    }
+  }
+
   console.log('All Android launcher PNG icons successfully generated and saved to source repository.');
 }
 
