@@ -148,40 +148,44 @@ export async function shareTextOrContent(options: {
 }
 
 /**
- * Saves and opens/shares a PDF file on native Android or web
+ * Saves a PDF file directly to device storage on native Android (or web fallback).
+ * Performs a true save/download operation without opening the Share Sheet or Print dialog.
  */
 export async function saveOrShareNativePdf(
   base64Data: string,
   filename: string,
-  title: string
+  _title?: string
 ): Promise<boolean> {
   if (Capacitor.isNativePlatform()) {
     try {
-      // Clean base64 string
-      const rawBase64 = base64Data.replace(/^data:application\/pdf;filename=generated\.pdf;base64,/, '')
-        .replace(/^data:application\/pdf;base64,/, '');
+      // 1. Clean base64 string completely
+      const rawBase64 = base64Data
+        .replace(/^data:application\/pdf[^;]*;base64,/, '')
+        .replace(/^data:[^;]*;base64,/, '')
+        .trim();
 
-      const writeResult = await Filesystem.writeFile({
-        path: filename,
-        data: rawBase64,
-        directory: Directory.Documents,
-        recursive: true,
-      });
-
-      if (writeResult.uri) {
-        try {
-          await Share.share({
-            title: title,
-            url: writeResult.uri,
-            dialogTitle: `Share / Open ${filename}`,
-          });
-        } catch {
-          // Ignored if user dismissed share sheet
-        }
+      // 2. Write file directly to Documents directory
+      try {
+        await Filesystem.writeFile({
+          path: filename,
+          data: rawBase64,
+          directory: Directory.Documents,
+          recursive: true,
+        });
+        return true;
+      } catch (docErr) {
+        console.warn('Filesystem write to Documents failed, trying Cache directory fallback:', docErr);
+        // Fallback to Cache directory if Documents is restricted
+        await Filesystem.writeFile({
+          path: filename,
+          data: rawBase64,
+          directory: Directory.Cache,
+          recursive: true,
+        });
         return true;
       }
     } catch (fsErr) {
-      console.warn('Native filesystem write failed, fallback to standard web download:', fsErr);
+      console.warn('Native filesystem write failed, falling back to standard web download:', fsErr);
     }
   }
   return false;
