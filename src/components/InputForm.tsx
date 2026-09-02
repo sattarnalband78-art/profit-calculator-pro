@@ -282,7 +282,7 @@ export const InputForm: React.FC<InputFormProps> = ({
               placeholder={t.productNamePlaceholder}
               value={input.productName}
               onChange={(e) => onChange('productName', e.target.value)}
-              className={`w-full pl-10 pr-12 py-3 text-sm sm:text-base font-bold bg-slate-50/70 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 transition-all ${
+              className={`w-full pl-10 pr-12 py-3 text-sm sm:text-base font-bold bg-slate-50/70 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 transition-all placeholder:text-slate-400 placeholder:font-normal ${
                 errors.productName
                   ? 'border-rose-300 bg-rose-50/20 text-rose-900 focus:ring-rose-400'
                   : 'border-slate-200/90 focus:border-blue-600 focus:ring-blue-600/15 text-slate-900'

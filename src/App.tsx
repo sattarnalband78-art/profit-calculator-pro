@@ -13,10 +13,10 @@ import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { initNativeApp } from './utils/nativeBridge';
 
 const INITIAL_INPUT: CalculationInput = {
-  productName: 'Gulab Jamun',
-  costPrice: 10,
-  sellingPrice: 20,
-  quantity: 100,
+  productName: '',
+  costPrice: '',
+  sellingPrice: '',
+  quantity: '',
 };
 
 function CalculatorApp() {
