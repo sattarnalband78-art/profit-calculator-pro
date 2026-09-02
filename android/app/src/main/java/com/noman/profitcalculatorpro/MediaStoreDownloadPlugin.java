@@ -1,7 +1,12 @@
 package com.noman.profitcalculatorpro;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.ContentResolver;
 import android.content.ContentValues;
+import android.content.Context;
+import android.content.Intent;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
@@ -9,6 +14,9 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Base64;
 import android.util.Log;
+
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -23,6 +31,129 @@ import java.io.OutputStream;
 @CapacitorPlugin(name = "MediaStoreDownloadPlugin")
 public class MediaStoreDownloadPlugin extends Plugin {
     private static final String TAG = "MediaStoreDownload";
+    private static final String CHANNEL_ID = "pdf_downloads";
+    private static final String CHANNEL_NAME = "PDF Downloads";
+    private static final int NOTIFICATION_ID = 2001;
+
+    @Override
+    public void load() {
+        super.load();
+        createNotificationChannel();
+    }
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                Context context = getContext();
+                if (context != null) {
+                    NotificationChannel channel = new NotificationChannel(
+                        CHANNEL_ID,
+                        CHANNEL_NAME,
+                        NotificationManager.IMPORTANCE_LOW
+                    );
+                    channel.setDescription("Notifications for generated PDF report downloads");
+                    NotificationManager manager = context.getSystemService(NotificationManager.class);
+                    if (manager != null) {
+                        manager.createNotificationChannel(channel);
+                    }
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to create notification channel", e);
+            }
+        }
+    }
+
+    private void showDownloadingNotification(String filename) {
+        try {
+            Context context = getContext();
+            if (context == null) return;
+
+            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
+            if (!notificationManager.areNotificationsEnabled()) return;
+
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.stat_sys_download)
+                .setContentTitle("Downloading PDF...")
+                .setContentText(filename)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOngoing(true)
+                .setProgress(0, 0, true)
+                .setOnlyAlertOnce(true);
+
+            notificationManager.notify(NOTIFICATION_ID, builder.build());
+        } catch (Exception e) {
+            Log.w(TAG, "Could not display downloading notification", e);
+        }
+    }
+
+    private void showDownloadCompleteNotification(String filename, Uri fileUri) {
+        try {
+            Context context = getContext();
+            if (context == null) return;
+
+            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
+            if (!notificationManager.areNotificationsEnabled()) return;
+
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                .setContentTitle("Download complete")
+                .setContentText(filename)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOngoing(false)
+                .setAutoCancel(true)
+                .setProgress(0, 0, false);
+
+            if (fileUri != null) {
+                try {
+                    Intent viewIntent = new Intent(Intent.ACTION_VIEW);
+                    viewIntent.setDataAndType(fileUri, "application/pdf");
+                    viewIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+
+                    int pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        pendingFlags |= PendingIntent.FLAG_IMMUTABLE;
+                    }
+
+                    PendingIntent pendingIntent = PendingIntent.getActivity(
+                        context,
+                        NOTIFICATION_ID,
+                        viewIntent,
+                        pendingFlags
+                    );
+                    builder.setContentIntent(pendingIntent);
+                } catch (Exception intentEx) {
+                    Log.w(TAG, "Could not attach pending intent to completion notification", intentEx);
+                }
+            }
+
+            notificationManager.notify(NOTIFICATION_ID, builder.build());
+        } catch (Exception e) {
+            Log.w(TAG, "Could not display download complete notification", e);
+        }
+    }
+
+    private void showDownloadFailedNotification(String filename) {
+        try {
+            Context context = getContext();
+            if (context == null) return;
+
+            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
+            if (!notificationManager.areNotificationsEnabled()) return;
+
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.stat_notify_error)
+                .setContentTitle("Download failed")
+                .setContentText(filename)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOngoing(false)
+                .setAutoCancel(true)
+                .setProgress(0, 0, false);
+
+            notificationManager.notify(NOTIFICATION_ID, builder.build());
+        } catch (Exception e) {
+            Log.w(TAG, "Could not display download failed notification", e);
+        }
+    }
 
     @PluginMethod
     public void saveToDownloads(PluginCall call) {
@@ -42,6 +173,9 @@ public class MediaStoreDownloadPlugin extends Plugin {
             filename = filename + ".pdf";
         }
 
+        createNotificationChannel();
+        showDownloadingNotification(filename);
+
         try {
             // Strip any data URI prefix if present (e.g. data:application/pdf;base64,...)
             if (base64Data.contains(",")) {
@@ -50,12 +184,14 @@ public class MediaStoreDownloadPlugin extends Plugin {
 
             byte[] pdfBytes = Base64.decode(base64Data.trim(), Base64.DEFAULT);
             if (pdfBytes == null || pdfBytes.length == 0) {
+                showDownloadFailedNotification(filename);
                 call.reject("Decoded PDF bytes are empty");
                 return;
             }
 
             boolean writeSuccess = false;
             String savedPathOrUri = "";
+            Uri completedUri = null;
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 // Android 10+ (API 29+): MediaStore.Downloads (Scoped Storage compliant, user-visible)
@@ -70,6 +206,7 @@ public class MediaStoreDownloadPlugin extends Plugin {
                 Uri fileUri = resolver.insert(collection, contentValues);
 
                 if (fileUri == null) {
+                    showDownloadFailedNotification(filename);
                     call.reject("Failed to create MediaStore entry in Downloads");
                     return;
                 }
@@ -84,6 +221,7 @@ public class MediaStoreDownloadPlugin extends Plugin {
                     Log.e(TAG, "Error writing bytes to MediaStore uri: " + fileUri, writeEx);
                     // Clean up incomplete entry
                     resolver.delete(fileUri, null, null);
+                    showDownloadFailedNotification(filename);
                     throw writeEx;
                 }
 
@@ -92,6 +230,7 @@ public class MediaStoreDownloadPlugin extends Plugin {
                 contentValues.put(MediaStore.Downloads.IS_PENDING, 0);
                 resolver.update(fileUri, contentValues, null, null);
                 savedPathOrUri = fileUri.toString();
+                completedUri = fileUri;
 
             } else {
                 // Android 9 and lower (API <= 28): Public Downloads directory with MediaScannerConnection
@@ -114,6 +253,10 @@ public class MediaStoreDownloadPlugin extends Plugin {
                     fos.flush();
                     writeSuccess = true;
                     savedPathOrUri = targetFile.getAbsolutePath();
+                    completedUri = Uri.fromFile(targetFile);
+                } catch (Exception writeEx) {
+                    showDownloadFailedNotification(filename);
+                    throw writeEx;
                 }
 
                 // Notify Android MediaScanner so file appears immediately in Downloads / Files app
@@ -126,17 +269,20 @@ public class MediaStoreDownloadPlugin extends Plugin {
             }
 
             if (writeSuccess) {
+                showDownloadCompleteNotification(filename, completedUri);
                 JSObject ret = new JSObject();
                 ret.put("success", true);
                 ret.put("uri", savedPathOrUri);
                 ret.put("filename", filename);
                 call.resolve(ret);
             } else {
+                showDownloadFailedNotification(filename);
                 call.reject("Failed to write PDF to Android Downloads");
             }
 
         } catch (Exception e) {
             Log.e(TAG, "Error saving PDF to Downloads via MediaStore", e);
+            showDownloadFailedNotification(filename);
             call.reject("Failed to save PDF: " + e.getMessage());
         }
     }
