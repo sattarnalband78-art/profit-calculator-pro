@@ -164,7 +164,19 @@ export async function saveOrShareNativePdf(
         .replace(/^data:[^;]*;base64,/, '')
         .trim();
 
-      // 2. Write file directly to Documents directory
+      // 2. Write file directly to user-accessible External/Documents directory
+      try {
+        await Filesystem.writeFile({
+          path: filename,
+          data: rawBase64,
+          directory: Directory.External,
+          recursive: true,
+        });
+        return true;
+      } catch (extErr) {
+        console.warn('Filesystem write to External failed, trying Documents directory:', extErr);
+      }
+
       try {
         await Filesystem.writeFile({
           path: filename,
@@ -174,8 +186,19 @@ export async function saveOrShareNativePdf(
         });
         return true;
       } catch (docErr) {
-        console.warn('Filesystem write to Documents failed, trying Cache directory fallback:', docErr);
-        // Fallback to Cache directory if Documents is restricted
+        console.warn('Filesystem write to Documents failed, trying Data directory:', docErr);
+      }
+
+      try {
+        await Filesystem.writeFile({
+          path: filename,
+          data: rawBase64,
+          directory: Directory.Data,
+          recursive: true,
+        });
+        return true;
+      } catch (dataErr) {
+        console.warn('Filesystem write to Data failed, trying Cache fallback:', dataErr);
         await Filesystem.writeFile({
           path: filename,
           data: rawBase64,

@@ -3,7 +3,7 @@ import { CalculationResult } from '../types';
 import { formatINR, formatPercent } from '../utils/formatters';
 import { useLanguage } from '../context/LanguageContext';
 import { PrintReportModal } from './PrintReportModal';
-import { shareTextOrContent } from '../utils/nativeBridge';
+import { shareTextOrContent, isNativeAndroid } from '../utils/nativeBridge';
 import {
   TrendingUp,
   TrendingDown,
@@ -121,13 +121,17 @@ export const ResultsGrid: React.FC<ResultsGridProps> = ({
 ━━━━━━━━━━━━━━━━━━━━
 ${t.shareFooter}`;
 
-    await shareTextOrContent({
+    const sharedViaNativeOrWeb = await shareTextOrContent({
       title: `${pName} - Profit Summary`,
       text: shareContent,
       dialogTitle: `${pName} - Profit Summary`,
     });
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+
+    // Only set "Copied!" state if the operation actually performed a clipboard copy fallback (not on native Android Share Sheet dismissal)
+    if (!isNativeAndroid() && sharedViaNativeOrWeb) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
   };
 
   const handleOpenPrint = () => {
