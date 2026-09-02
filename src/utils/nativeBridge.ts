@@ -1,6 +1,5 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Share } from '@capacitor/share';
-import { Filesystem, Directory } from '@capacitor/filesystem';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { App as CapacitorApp } from '@capacitor/app';
 
@@ -9,6 +8,16 @@ interface NativePrintPlugin {
 }
 
 const PrintManagerPlugin = registerPlugin<NativePrintPlugin>('PrintManagerPlugin');
+
+interface NativeMediaStorePlugin {
+  saveToDownloads(options: { base64: string; filename: string }): Promise<{
+    success: boolean;
+    uri?: string;
+    filename?: string;
+  }>;
+}
+
+const MediaStoreDownloadPlugin = registerPlugin<NativeMediaStorePlugin>('MediaStoreDownloadPlugin');
 
 /**
  * Checks if the application is running inside a native Capacitor shell (e.g. Android APK)
@@ -148,7 +157,7 @@ export async function shareTextOrContent(options: {
 }
 
 /**
- * Saves a PDF file directly to device storage on native Android (or web fallback).
+ * Saves a PDF file directly to the public Android Downloads folder via MediaStore.
  * Performs a true save/download operation without opening the Share Sheet or Print dialog.
  */
 export async function saveOrShareNativePdf(
@@ -156,7 +165,7 @@ export async function saveOrShareNativePdf(
   filename: string,
   _title?: string
 ): Promise<boolean> {
-  if (Capacitor.isNativePlatform()) {
+  if (isNativeAndroid()) {
     try {
       // 1. Clean base64 string completely
       const rawBase64 = base64Data
@@ -164,51 +173,19 @@ export async function saveOrShareNativePdf(
         .replace(/^data:[^;]*;base64,/, '')
         .trim();
 
-      // 2. Write file directly to user-accessible External/Documents directory
-      try {
-        await Filesystem.writeFile({
-          path: filename,
-          data: rawBase64,
-          directory: Directory.External,
-          recursive: true,
-        });
-        return true;
-      } catch (extErr) {
-        console.warn('Filesystem write to External failed, trying Documents directory:', extErr);
-      }
+      // 2. Write directly to Android public Downloads via MediaStore
+      const result = await MediaStoreDownloadPlugin.saveToDownloads({
+        base64: rawBase64,
+        filename,
+      });
 
-      try {
-        await Filesystem.writeFile({
-          path: filename,
-          data: rawBase64,
-          directory: Directory.Documents,
-          recursive: true,
-        });
-        return true;
-      } catch (docErr) {
-        console.warn('Filesystem write to Documents failed, trying Data directory:', docErr);
-      }
-
-      try {
-        await Filesystem.writeFile({
-          path: filename,
-          data: rawBase64,
-          directory: Directory.Data,
-          recursive: true,
-        });
-        return true;
-      } catch (dataErr) {
-        console.warn('Filesystem write to Data failed, trying Cache fallback:', dataErr);
-        await Filesystem.writeFile({
-          path: filename,
-          data: rawBase64,
-          directory: Directory.Cache,
-          recursive: true,
-        });
+      if (result && result.success) {
         return true;
       }
+      throw new Error('MediaStore download returned unsuccessful');
     } catch (fsErr) {
-      console.warn('Native filesystem write failed, falling back to standard web download:', fsErr);
+      console.error('Native Android MediaStore PDF save failed:', fsErr);
+      throw fsErr;
     }
   }
   return false;
