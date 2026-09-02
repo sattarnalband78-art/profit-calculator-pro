@@ -42,57 +42,73 @@ jobs:
         working-directory: android
         run: ./gradlew assembleRelease --no-daemon --max-workers=2
 
-      - name: Sign Release APK
+      - name: Sign and Align Release APK
         id: sign_apk
         run: |
           RELEASE_DIR="android/app/build/outputs/apk/release"
-          APK_FILE=$(find "$RELEASE_DIR" -name "*.apk" | head -n 1)
+          RAW_APK=$(find "$RELEASE_DIR" -name "*.apk" ! -name "*signed.apk" ! -name "*aligned.apk" | head -n 1)
           
-          if [ -z "$APK_FILE" ]; then
+          if [ -z "$RAW_APK" ]; then
             echo "Error: No release APK found in $RELEASE_DIR"
             exit 1
           fi
           
-          echo "Found APK: $APK_FILE"
+          echo "Found raw APK: $RAW_APK"
           
+          # Locate Android build-tools
+          BUILD_TOOLS=$(ls -d ${ANDROID_HOME}/build-tools/* | sort -V | tail -n 1)
+          echo "Using Android Build-Tools: $BUILD_TOOLS"
+          
+          ALIGNED_APK="${RELEASE_DIR}/app-release-aligned.apk"
+          FINAL_SIGNED_APK="${RELEASE_DIR}/NOMAN-Profit-Calculator-Pro-release-signed.apk"
+          
+          # Step 1: 4-byte Page Alignment (MANDATORY before apksigner)
+          echo "Aligning APK with zipalign..."
+          $BUILD_TOOLS/zipalign -f -p 4 "$RAW_APK" "$ALIGNED_APK"
+          
+          # Step 2: Keystore resolution & signing
+          KEYSTORE_FILE="/tmp/release.keystore"
           if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ] && [ -n "${{ secrets.KEY_ALIAS }}" ] && [ -n "${{ secrets.KEY_PASSWORD }}" ]; then
-            echo "Signing with Custom GitHub Repository Secret Key..."
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/release.keystore
-            
-            ${ANDROID_HOME}/build-tools/35.0.0/apksigner sign \
-              --ks /tmp/release.keystore \
-              --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
-              --ks-pass "pass:${{ secrets.KEY_PASSWORD }}" \
-              --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
-              --out "${RELEASE_DIR}/NOMAN-Profit-Calculator-Pro-release-signed.apk" \
-              "$APK_FILE"
-              
-            rm -f /tmp/release.keystore
+            echo "Signing with Custom GitHub Repository Secrets..."
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$KEYSTORE_FILE"
+            KS_ALIAS="${{ secrets.KEY_ALIAS }}"
+            KS_PASS="${{ secrets.KEY_PASSWORD }}"
           else
-            echo "Custom Keystore Secret not detected. Generating a dedicated signing key for immediate installation..."
+            echo "Generating standard release signing key..."
             keytool -genkeypair -v \
-              -keystore /tmp/auto.keystore \
-              -alias nomankey \
+              -keystore "$KEYSTORE_FILE" \
+              -alias noman_release_key \
               -keyalg RSA \
               -keysize 2048 \
               -validity 10000 \
-              -storepass noman123 \
-              -keypass noman123 \
-              -dname "CN=NOMAN Profit Calculator Pro, OU=NOMAN, O=NOMAN, L=Global, ST=Global, C=US"
-              
-            ${ANDROID_HOME}/build-tools/35.0.0/apksigner sign \
-              --ks /tmp/auto.keystore \
-              --ks-key-alias nomankey \
-              --ks-pass pass:noman123 \
-              --key-pass pass:noman123 \
-              --out "${RELEASE_DIR}/NOMAN-Profit-Calculator-Pro-release-signed.apk" \
-              "$APK_FILE"
-              
-            rm -f /tmp/auto.keystore
+              -storepass nomanrelease123 \
+              -keypass nomanrelease123 \
+              -dname "CN=NOMAN Profit Calculator Pro, OU=NOMAN, O=NOMAN, L=Mumbai, ST=Maharashtra, C=IN"
+            KS_ALIAS="noman_release_key"
+            KS_PASS="nomanrelease123"
           fi
           
-          echo "Verifying Signed APK..."
-          ${ANDROID_HOME}/build-tools/35.0.0/apksigner verify --verbose "${RELEASE_DIR}/NOMAN-Profit-Calculator-Pro-release-signed.apk"
+          # Step 3: Sign using apksigner (v1 JAR + v2 Full APK + v3 APK Signature Scheme)
+          echo "Signing APK with apksigner (v1, v2, v3 schemes)..."
+          $BUILD_TOOLS/apksigner sign \
+            --ks "$KEYSTORE_FILE" \
+            --ks-key-alias "$KS_ALIAS" \
+            --ks-pass "pass:$KS_PASS" \
+            --key-pass "pass:$KS_PASS" \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
+            --v4-signing-enabled false \
+            --out "$FINAL_SIGNED_APK" \
+            "$ALIGNED_APK"
+            
+          rm -f "$KEYSTORE_FILE" "$ALIGNED_APK"
+          
+          # Step 4: Verification
+          echo "=== APK Signature & Integrity Verification ==="
+          $BUILD_TOOLS/apksigner verify --verbose --print-certs "$FINAL_SIGNED_APK"
+          
+          echo "Release APK successfully aligned and signed: $FINAL_SIGNED_APK"
 
       - name: Upload Signed APK
         uses: actions/upload-artifact@v4
