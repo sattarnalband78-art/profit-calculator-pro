@@ -42,8 +42,60 @@ jobs:
         working-directory: android
         run: ./gradlew assembleRelease --no-daemon --max-workers=2
 
-      - name: Upload APK
+      - name: Sign Release APK
+        id: sign_apk
+        run: |
+          RELEASE_DIR="android/app/build/outputs/apk/release"
+          APK_FILE=$(find "$RELEASE_DIR" -name "*.apk" | head -n 1)
+          
+          if [ -z "$APK_FILE" ]; then
+            echo "Error: No release APK found in $RELEASE_DIR"
+            exit 1
+          fi
+          
+          echo "Found APK: $APK_FILE"
+          
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ] && [ -n "${{ secrets.KEY_ALIAS }}" ] && [ -n "${{ secrets.KEY_PASSWORD }}" ]; then
+            echo "Signing with Custom GitHub Repository Secret Key..."
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/release.keystore
+            
+            ${ANDROID_HOME}/build-tools/35.0.0/apksigner sign \
+              --ks /tmp/release.keystore \
+              --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
+              --ks-pass "pass:${{ secrets.KEY_PASSWORD }}" \
+              --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
+              --out "${RELEASE_DIR}/NOMAN-Profit-Calculator-Pro-release-signed.apk" \
+              "$APK_FILE"
+              
+            rm -f /tmp/release.keystore
+          else
+            echo "Custom Keystore Secret not detected. Generating a dedicated signing key for immediate installation..."
+            keytool -genkeypair -v \
+              -keystore /tmp/auto.keystore \
+              -alias nomankey \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass noman123 \
+              -keypass noman123 \
+              -dname "CN=NOMAN Profit Calculator Pro, OU=NOMAN, O=NOMAN, L=Global, ST=Global, C=US"
+              
+            ${ANDROID_HOME}/build-tools/35.0.0/apksigner sign \
+              --ks /tmp/auto.keystore \
+              --ks-key-alias nomankey \
+              --ks-pass pass:noman123 \
+              --key-pass pass:noman123 \
+              --out "${RELEASE_DIR}/NOMAN-Profit-Calculator-Pro-release-signed.apk" \
+              "$APK_FILE"
+              
+            rm -f /tmp/auto.keystore
+          fi
+          
+          echo "Verifying Signed APK..."
+          ${ANDROID_HOME}/build-tools/35.0.0/apksigner verify --verbose "${RELEASE_DIR}/NOMAN-Profit-Calculator-Pro-release-signed.apk"
+
+      - name: Upload Signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: NOMAN-Profit-Calculator-APK
-          path: android/app/build/outputs/apk/release/*.apk
+          name: NOMAN-Profit-Calculator-Pro-Signed-APK
+          path: android/app/build/outputs/apk/release/*signed.apk
