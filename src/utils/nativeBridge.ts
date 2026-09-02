@@ -2,6 +2,7 @@ import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { StatusBar, Style } from '@capacitor/status-bar';
+import { App as CapacitorApp } from '@capacitor/app';
 
 /**
  * Checks if the application is running inside a native Capacitor shell (e.g. Android APK)
@@ -11,15 +12,50 @@ export function isNativeAndroid(): boolean {
 }
 
 /**
- * Initializes native Android device integrations (status bar, navigation bar, etc.)
+ * Exits the Android application immediately
  */
-export async function initNativeApp(): Promise<void> {
+export async function exitNativeApp(): Promise<void> {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await CapacitorApp.exitApp();
+    } catch (e) {
+      console.warn('Capacitor exitApp failed:', e);
+    }
+  }
+}
+
+/**
+ * Initializes native Android device integrations:
+ * 1. Status Bar styling & brand color (#061326)
+ * 2. Hardware / System Back Button handling to exit app or navigate back
+ */
+export async function initNativeApp(onBackPressed?: () => boolean): Promise<void> {
   if (Capacitor.isNativePlatform()) {
     try {
       await StatusBar.setStyle({ style: Style.Dark });
       await StatusBar.setBackgroundColor({ color: '#061326' });
     } catch (e) {
       console.warn('Native status bar setup skipped:', e);
+    }
+
+    try {
+      await CapacitorApp.removeAllListeners();
+      await CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+        // Allow custom in-app back handling if provided
+        if (onBackPressed && onBackPressed()) {
+          return;
+        }
+
+        // If standard browser history can go back, navigate back
+        if (canGoBack && window.history.length > 1) {
+          window.history.back();
+        } else {
+          // Otherwise exit the application cleanly
+          CapacitorApp.exitApp();
+        }
+      });
+    } catch (e) {
+      console.warn('Native back button registration failed:', e);
     }
   }
 }

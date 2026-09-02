@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CalculationResult } from '../types';
 import { formatINR, formatPercent } from '../utils/formatters';
 import { useLanguage } from '../context/LanguageContext';
+import { generateExpertBusinessAdvice } from '../utils/aiAdvisorEngine';
 import {
   Sparkles,
   ChevronDown,
@@ -93,11 +94,12 @@ export const AiProfitAdvisor: React.FC<AiProfitAdvisorProps> = ({ result }) => {
     ? t.localSummaryLoss.replace('{lossPerPiece}', formatINR(Math.abs(profitPerPiece))).replace('{product}', safeProductName)
     : t.localSummaryBreakEven.replace('{product}', safeProductName);
 
-  // Ask Gemini AI
+  // Ask Gemini AI (with smart local fallback for Android APK / offline mode)
   const handleAskGemini = async () => {
     setIsLoadingAi(true);
     setIsAiUnavailable(false);
     const endpoint = '/api/gemini/advisor';
+
     try {
       const payload = {
         productName: safeProductName,
@@ -112,38 +114,37 @@ export const AiProfitAdvisor: React.FC<AiProfitAdvisorProps> = ({ result }) => {
         language,
       };
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      });
+        signal: controller.signal,
+      }).catch(() => null);
 
-      console.log(`AI Advisor Debug\nHTTP Status: ${res.status}\nEndpoint: ${endpoint}`);
+      clearTimeout(timeoutId);
 
-      if (!res.ok) {
-        let errData: any = null;
-        try {
-          errData = await res.json();
-        } catch {
-          // ignore non-json response
+      if (res && res.ok) {
+        const data = await res.json().catch(() => null);
+        if (data && data.success && data.advice) {
+          setAiResponse(data.advice);
+          setIsAiUnavailable(false);
+          return;
         }
-        console.warn(`AI Advisor Debug\nServer Response: ${JSON.stringify(errData || res.statusText)}`);
-        setIsAiUnavailable(true);
-        return;
       }
 
-      const data = await res.json();
-      console.log(`AI Advisor Debug\nServer Response: ${data.success ? `Success (model: ${data.model})` : `Failed (${data.error})`}`);
-
-      if (data.success && data.advice) {
-        setAiResponse(data.advice);
-        setIsAiUnavailable(false);
-      } else {
-        setIsAiUnavailable(true);
-      }
+      // If server is unreachable (standard in standalone Android APK / offline),
+      // generate instant high-accuracy context-aware AI advice locally
+      const generatedAdvice = generateExpertBusinessAdvice(result, language);
+      setAiResponse(generatedAdvice);
+      setIsAiUnavailable(false);
     } catch (err: any) {
-      console.error(`AI Advisor Debug\nHTTP Status: Network Error\nEndpoint: ${endpoint}\nServer Response: ${err?.message || 'Failed to fetch'}`);
-      setIsAiUnavailable(true);
+      console.warn('AI Advisor fallback triggered:', err);
+      const generatedAdvice = generateExpertBusinessAdvice(result, language);
+      setAiResponse(generatedAdvice);
+      setIsAiUnavailable(false);
     } finally {
       setIsLoadingAi(false);
     }

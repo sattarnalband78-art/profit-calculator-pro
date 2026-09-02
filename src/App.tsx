@@ -10,6 +10,7 @@ import { MoreBusinessTools } from './components/MoreBusinessTools';
 import { HistoryList } from './components/HistoryList';
 import { Calculator, ShieldCheck, Sparkles } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
+import { initNativeApp } from './utils/nativeBridge';
 
 const INITIAL_INPUT: CalculationInput = {
   productName: 'Gulab Jamun',
@@ -64,6 +65,17 @@ function CalculatorApp() {
       // Ignore
     }
   }, [history]);
+
+  // Handle native Android hardware/system back button
+  useEffect(() => {
+    initNativeApp(() => {
+      if (editingId) {
+        setEditingId(null);
+        return true; // Cancel active edit mode on back press
+      }
+      return false; // Exit app if at root
+    });
+  }, [editingId]);
 
   // Validation Routine
   const validate = (currentInput: CalculationInput): ValidationErrors => {
