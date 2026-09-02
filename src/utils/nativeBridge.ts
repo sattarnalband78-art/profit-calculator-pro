@@ -1,14 +1,47 @@
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { App as CapacitorApp } from '@capacitor/app';
+
+interface NativePrintPlugin {
+  printPdf(options: { base64: string; name?: string }): Promise<{ success: boolean }>;
+}
+
+const PrintManagerPlugin = registerPlugin<NativePrintPlugin>('PrintManagerPlugin');
 
 /**
  * Checks if the application is running inside a native Capacitor shell (e.g. Android APK)
  */
 export function isNativeAndroid(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
+}
+
+/**
+ * Native Print Handler for Android APK:
+ * Invokes the native Android PrintManager system service directly via PrintManagerPlugin.
+ * Opens the real Android system print preview / print spooler dialog.
+ */
+export async function printNativePdfReport(base64Data: string, filename: string): Promise<boolean> {
+  if (!isNativeAndroid()) {
+    return false;
+  }
+
+  try {
+    const cleanBase64 = base64Data
+      .replace(/^data:application\/pdf;filename=generated\.pdf;base64,/, '')
+      .replace(/^data:application\/pdf;base64,/, '');
+
+    const docName = filename.replace(/\.pdf$/i, '');
+    const res = await PrintManagerPlugin.printPdf({
+      base64: cleanBase64,
+      name: docName,
+    });
+    return !!res.success;
+  } catch (err) {
+    console.error('Native Android PrintManager failed:', err);
+    return false;
+  }
 }
 
 /**

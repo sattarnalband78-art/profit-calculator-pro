@@ -2,7 +2,7 @@ import { jsPDF } from 'jspdf';
 import { CalculationResult } from '../types';
 import { formatINR, formatPercent } from './formatters';
 import { AppLanguage, translations } from './translations';
-import { saveOrShareNativePdf } from './nativeBridge';
+import { saveOrShareNativePdf, isNativeAndroid, printNativePdfReport } from './nativeBridge';
 
 export interface GenerateReportOptions {
   result: CalculationResult;
@@ -839,7 +839,37 @@ export function generatePrintableHTML({ result, language }: GenerateReportOption
  * Triggers printing using the native browser print API for 100% reliable execution
  */
 export function triggerDirectPrint(options: GenerateReportOptions): boolean {
-  console.log('Print Debug: button clicked → print handler started → print preview/window opened → window.print() called');
+  console.log('Print Debug: button clicked → print handler started');
+
+  // Android Native Flow: Route directly to Android PrintManager system framework
+  if (isNativeAndroid()) {
+    try {
+      const canvas = renderReportToCanvas(options);
+      const imgData = canvas.toDataURL('image/png', 1.0);
+
+      const pdf = createJsPdfDoc({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true,
+      });
+
+      const marginMm = 12;
+      const pageWidthMm = 210;
+      const contentWidthMm = pageWidthMm - marginMm * 2;
+      const contentHeightMm = (canvas.height * contentWidthMm) / canvas.width;
+
+      pdf.addImage(imgData, 'PNG', marginMm, marginMm, contentWidthMm, contentHeightMm, undefined, 'FAST');
+
+      const base64Data = pdf.output('datauristring');
+      const filename = generatePdfFilename(options.result.productName);
+      printNativePdfReport(base64Data, filename);
+      return true;
+    } catch (err) {
+      console.error('Android PrintManager trigger error:', err);
+      return false;
+    }
+  }
 
   try {
     const htmlContent = generatePrintableHTML(options);
