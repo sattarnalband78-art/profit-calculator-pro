@@ -45,23 +45,21 @@ jobs:
       - name: Sign and Align Release APK
         id: sign_apk
         run: |
-          # 1. Locate APK anywhere inside android/app/build/outputs/apk
-          echo "Scanning for built APKs..."
-          find android/app/build/outputs/apk -name "*.apk" -type f || true
+          # Prioritize the exact standard output path from assembleRelease
+          RAW_APK="android/app/build/outputs/apk/release/app-release-unsigned.apk"
           
-          # Find raw release APK (or fallback to any generated APK)
-          RAW_APK=$(find android/app/build/outputs/apk -name "*release*.apk" ! -name "*signed*" ! -name "*aligned*" | head -n 1)
-          if [ -z "$RAW_APK" ]; then
+          if [ ! -f "$RAW_APK" ]; then
+            echo "$RAW_APK not found at direct path. Searching under android/app/build/outputs/apk/..."
             RAW_APK=$(find android/app/build/outputs/apk -name "*.apk" ! -name "*signed*" ! -name "*aligned*" | head -n 1)
           fi
           
-          if [ -z "$RAW_APK" ]; then
-            echo "Error: No APK found after assembleRelease. Full directory listing:"
+          if [ -z "$RAW_APK" ] || [ ! -f "$RAW_APK" ]; then
+            echo "Error: No APK found after assembleRelease."
             ls -laR android/app/build/outputs/ || true
             exit 1
           fi
           
-          echo "Found raw APK: $RAW_APK"
+          echo "Target Raw APK: $RAW_APK"
           OUTPUT_DIR="$(dirname "$RAW_APK")"
           
           # Locate Android build-tools
@@ -71,7 +69,7 @@ jobs:
           ALIGNED_APK="${OUTPUT_DIR}/app-release-aligned.apk"
           FINAL_SIGNED_APK="${OUTPUT_DIR}/NOMAN-Profit-Calculator-Pro-release-signed.apk"
           
-          # Step 1: 4-byte Page Alignment (MANDATORY before apksigner)
+          # Step 1: 4-byte Page Alignment
           echo "Aligning APK with zipalign..."
           $BUILD_TOOLS/zipalign -f -p 4 "$RAW_APK" "$ALIGNED_APK"
           
@@ -97,7 +95,7 @@ jobs:
             KS_PASS="nomanrelease123"
           fi
           
-          # Step 3: Sign using apksigner (v1 JAR + v2 Full APK + v3 APK Signature Scheme)
+          # Step 3: Sign using apksigner (v1, v2, v3 schemes)
           echo "Signing APK with apksigner (v1, v2, v3 schemes)..."
           $BUILD_TOOLS/apksigner sign \
             --ks "$KEYSTORE_FILE" \
@@ -123,7 +121,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: NOMAN-Profit-Calculator-Pro-Signed-APK
-          path: android/app/build/outputs/apk/**/NOMAN-Profit-Calculator-Pro-release-signed.apk
+          path: android/app/build/outputs/apk/release/NOMAN-Profit-Calculator-Pro-release-signed.apk
           if-no-files-found: error
           retention-days: 30
           overwrite: true
