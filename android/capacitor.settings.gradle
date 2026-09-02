@@ -3,13 +3,13 @@ include ':capacitor-android'
 project(':capacitor-android').projectDir = new File('./capacitor-android')
 
 include ':capacitor-app'
-project(':capacitor-app').projectDir = new File('../node_modules/@capacitor/app/android')
+project(':capacitor-app').projectDir = new File(file('./capacitor-app').exists() ? './capacitor-app' : '../node_modules/@capacitor/app/android')
 
 include ':capacitor-filesystem'
-project(':capacitor-filesystem').projectDir = new File('../node_modules/@capacitor/filesystem/android')
+project(':capacitor-filesystem').projectDir = new File(file('./capacitor-filesystem').exists() ? './capacitor-filesystem' : '../node_modules/@capacitor/filesystem/android')
 
 include ':capacitor-share'
-project(':capacitor-share').projectDir = new File('../node_modules/@capacitor/share/android')
+project(':capacitor-share').projectDir = new File(file('./capacitor-share').exists() ? './capacitor-share' : '../node_modules/@capacitor/share/android')
 
 include ':capacitor-status-bar'
-project(':capacitor-status-bar').projectDir = new File('../node_modules/@capacitor/status-bar/android')
+project(':capacitor-status-bar').projectDir = new File(file('./capacitor-status-bar').exists() ? './capacitor-status-bar' : '../node_modules/@capacitor/status-bar/android')

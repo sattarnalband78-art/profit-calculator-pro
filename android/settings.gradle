@@ -4,7 +4,19 @@ project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor
 
 apply from: 'capacitor.settings.gradle'
 
-// Ensure :capacitor-android always points to the local vendor module for standalone builds without node_modules
+// Ensure Capacitor modules point to local vendor directories when present for standalone and CI builds
 if (file('./capacitor-android').exists()) {
     project(':capacitor-android').projectDir = new File('./capacitor-android')
+}
+if (file('./capacitor-app').exists()) {
+    project(':capacitor-app').projectDir = new File('./capacitor-app')
+}
+if (file('./capacitor-filesystem').exists()) {
+    project(':capacitor-filesystem').projectDir = new File('./capacitor-filesystem')
+}
+if (file('./capacitor-share').exists()) {
+    project(':capacitor-share').projectDir = new File('./capacitor-share')
+}
+if (file('./capacitor-status-bar').exists()) {
+    project(':capacitor-status-bar').projectDir = new File('./capacitor-status-bar')
 }

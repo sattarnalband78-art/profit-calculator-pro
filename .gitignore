@@ -10,4 +10,9 @@ coverage/
 .gradle/
 android/.gradle/
 android/app/build/
+android/capacitor-android/build/
+android/capacitor-app/build/
+android/capacitor-filesystem/build/
+android/capacitor-share/build/
+android/capacitor-status-bar/build/
 android/capacitor-cordova-android-plugins/build/
