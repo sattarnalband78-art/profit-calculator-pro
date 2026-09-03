@@ -3,7 +3,6 @@ import { CalculationResult } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { formatINR, formatPercent } from '../utils/formatters';
 import {
-  generatePlainTextReport,
   generateAndDownloadPdf,
   triggerDirectPrint,
   generatePdfFilename,
@@ -11,7 +10,6 @@ import {
 import {
   Printer,
   Download,
-  Copy,
   Check,
   X,
   ShieldCheck,
@@ -34,7 +32,6 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
   autoDownloadOnOpen = false,
 }) => {
   const { language, t } = useLanguage();
-  const [copied, setCopied] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfSuccess, setPdfSuccess] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
@@ -114,17 +111,6 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
       }
     } finally {
       setTimeout(() => setIsPrinting(false), 500);
-    }
-  };
-
-  const handleCopyText = async () => {
-    const text = generatePlainTextReport({ result, language });
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    } catch {
-      // Fallback
     }
   };
 
@@ -377,25 +363,6 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
         {/* Modal Bottom Action Bar */}
         <div className="print-modal-footer bg-white border-t border-slate-200 px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            {/* Copy Summary Text */}
-            <button
-              type="button"
-              onClick={handleCopyText}
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-all cursor-pointer min-h-[44px]"
-            >
-              {copied ? (
-                <>
-                  <Check className="w-4 h-4 mr-1.5 text-blue-600" />
-                  <span>{t.copiedMsg}</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4 mr-1.5 text-slate-600" />
-                  <span>{t.shareBtn}</span>
-                </>
-              )}
-            </button>
-
             {/* Print Dialog Button */}
             <button
               type="button"
