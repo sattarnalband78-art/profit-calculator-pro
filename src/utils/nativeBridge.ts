@@ -19,11 +19,20 @@ interface NativeMediaStorePlugin {
 
 const MediaStoreDownloadPlugin = registerPlugin<NativeMediaStorePlugin>('MediaStoreDownloadPlugin');
 
+export interface ShareResult {
+  completed: boolean;
+  copied: boolean;
+}
+
 /**
  * Checks if the application is running inside a native Capacitor shell (e.g. Android APK)
  */
 export function isNativeAndroid(): boolean {
-  return Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
+  return (
+    Capacitor.isNativePlatform() &&
+    (Capacitor.getPlatform() === 'android' ||
+      (typeof window !== 'undefined' && !!(window as any).androidBridge))
+  );
 }
 
 /**
@@ -106,14 +115,14 @@ export async function initNativeApp(onBackPressed?: () => boolean): Promise<void
  * Native-ready Share helper that works seamlessly across:
  * 1. Capacitor Native Android Share sheet
  * 2. Standard Web Share API (navigator.share)
- * 3. Clipboard fallback
+ * 3. Clipboard fallback (strictly for desktop browsers where native sharing is unavailable)
  */
 export async function shareTextOrContent(options: {
   title: string;
   text: string;
   url?: string;
   dialogTitle?: string;
-}): Promise<boolean> {
+}): Promise<ShareResult> {
   // 1. Native Capacitor Share (Android APK)
   if (Capacitor.isNativePlatform()) {
     try {
@@ -123,13 +132,16 @@ export async function shareTextOrContent(options: {
         url: options.url,
         dialogTitle: options.dialogTitle || 'Share with NOMAN Profit Calculator Pro',
       });
-      return true;
+      return { completed: true, copied: false };
     } catch (nativeShareErr) {
-      console.warn('Capacitor Share failed, falling back:', nativeShareErr);
+      // User cancelled, dismissed, or returned from Share Sheet (e.g. WhatsApp, back button)
+      console.warn('Capacitor Share dismissed or returned:', nativeShareErr);
+      // On native platform, NEVER fall back to clipboard write and NEVER trigger copy state
+      return { completed: false, copied: false };
     }
   }
 
-  // 2. Standard Web Share API
+  // 2. Standard Web Share API (mobile web browsers)
   if (typeof navigator !== 'undefined' && navigator.share) {
     try {
       await navigator.share({
@@ -137,23 +149,27 @@ export async function shareTextOrContent(options: {
         text: options.text,
         url: options.url,
       });
-      return true;
-    } catch {
-      // User cancelled or share failed, proceed to clipboard
+      return { completed: true, copied: false };
+    } catch (webShareErr: any) {
+      // If user cancelled Web Share sheet (AbortError), do NOT fall back to clipboard
+      if (webShareErr?.name === 'AbortError') {
+        return { completed: false, copied: false };
+      }
+      console.warn('navigator.share failed, falling back to clipboard:', webShareErr);
     }
   }
 
-  // 3. Clipboard fallback
+  // 3. Clipboard fallback (only for desktop / web browsers where native sharing is unavailable)
   if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
     try {
       await navigator.clipboard.writeText(options.text);
-      return true;
+      return { completed: true, copied: true };
     } catch (clipErr) {
       console.warn('Clipboard write failed:', clipErr);
     }
   }
 
-  return false;
+  return { completed: false, copied: false };
 }
 
 /**

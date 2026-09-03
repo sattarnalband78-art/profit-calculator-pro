@@ -121,14 +121,15 @@ export const ResultsGrid: React.FC<ResultsGridProps> = ({
 ━━━━━━━━━━━━━━━━━━━━
 ${t.shareFooter}`;
 
-    const sharedViaNativeOrWeb = await shareTextOrContent({
+    const shareResult = await shareTextOrContent({
       title: `${pName} - Profit Summary`,
       text: shareContent,
       dialogTitle: `${pName} - Profit Summary`,
     });
 
-    // Only set "Copied!" state if the operation actually performed a clipboard copy fallback (not on native Android Share Sheet dismissal)
-    if (!isNativeAndroid() && sharedViaNativeOrWeb) {
+    // Only set "Copied!" state if the operation actually performed a desktop/web clipboard fallback
+    // Never show "Copied!" on native Android or after native Share Sheet dismissal / return
+    if (!isNativeAndroid() && shareResult.copied) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     }
